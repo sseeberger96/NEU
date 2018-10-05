@@ -27,7 +27,7 @@ y_train = np.squeeze(y_train)
 # print(y_train[1])
 y_test = np.squeeze(y_test)
 n_input = int(x_train.shape[1])
-n_neurons = 2500
+n_neurons = 2000
 n_labels = 10
 
 
@@ -76,12 +76,12 @@ def train():
 	loss = get_loss(y_actual,y_pred)
 	accuracy = get_accuracy(y_actual,y_pred)
 
-	train_step = tf.train.GradientDescentOptimizer(0.001).minimize(loss)
+	train_step = tf.train.GradientDescentOptimizer(0.0001).minimize(loss)
 
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
 
-	for i in range(100):
+	for i in range(1000):
 		s = np.arange(x_train.shape[0]) 
 		np.random.shuffle(s)
 		xTr = x_train[s]
@@ -89,7 +89,7 @@ def train():
 		batch_xs = xTr[:100]
 		batch_ys = yTr[:100]
 		loss_out, step, acc = sess.run([loss, train_step,accuracy], feed_dict={x: batch_xs, y_actual: batch_ys}) 
-		if (i % 10) == 0: 
+		if (i % 100) == 0: 
 			print("Loss: ")
 			print(loss_out)
 			print("Training Accuracy: ")
