@@ -27,6 +27,7 @@ y_train = np.squeeze(y_train)
 # print(y_train[1])
 y_test = np.squeeze(y_test)
 n_input = int(x_train.shape[1])
+n_neurons_second = 1000
 n_neurons = 2000
 n_labels = 10
 
@@ -38,20 +39,25 @@ def configure_layers(n_input, n_neurons, n_labels):
 	y_actual = tf.placeholder(tf.int64, [None])
 	W = {
 		'first_layer': tf.Variable(tf.random_normal([n_input, n_neurons])), 
-		'second_layer': tf.Variable(tf.random_normal([n_neurons,n_neurons])),
-		'out_layer': tf.Variable(tf.random_normal([n_neurons,n_labels]))
+		'second_layer': tf.Variable(tf.random_normal([n_neurons,n_neurons_second])),
+		'out_layer': tf.Variable(tf.random_normal([n_neurons_second,n_labels]))
 	}
 	b = {
 		'first_layer': tf.Variable(tf.zeros([n_neurons])), 
-		'second_layer': tf.Variable(tf.zeros([n_neurons])),
+		'second_layer': tf.Variable(tf.zeros([n_neurons_second])),
 		'out_layer': tf.Variable(tf.zeros([n_labels]))
 	}
 
 	return x, y_actual, W, b
 
 def make_model(x, W, b):
-	layer_one = tf.nn.relu(tf.matmul(x, W['first_layer']) + b['first_layer'])
-	layer_two = tf.nn.relu(tf.matmul(layer_one, W['second_layer']) + b['second_layer'])
+	first = tf.matmul(x, W['first_layer']) + b['first_layer']
+	mean1, variance1 = tf.nn.moments(first,axes=[0])
+	layer_one = tf.nn.relu(tf.nn.batch_normalization(first,mean1,variance1,None,None,1e-12))
+
+	second = tf.matmul(layer_one, W['second_layer']) + b['second_layer']
+	mean2, variance2 = tf.nn.moments(second,axes=[0])
+	layer_two = tf.nn.relu(tf.nn.batch_normalization(second,mean2,variance2,None,None,1e-12))
 	y_pred = tf.matmul(layer_two,W['out_layer']) + b['out_layer']
 
 	return y_pred
@@ -76,12 +82,12 @@ def train():
 	loss = get_loss(y_actual,y_pred)
 	accuracy = get_accuracy(y_actual,y_pred)
 
-	train_step = tf.train.GradientDescentOptimizer(0.0001).minimize(loss)
+	train_step = tf.train.GradientDescentOptimizer(0.1).minimize(loss)
 
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
 
-	for i in range(1000):
+	for i in range(700):
 		s = np.arange(x_train.shape[0]) 
 		np.random.shuffle(s)
 		xTr = x_train[s]
