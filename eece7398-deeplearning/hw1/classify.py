@@ -82,7 +82,7 @@ def train():
 	loss = get_loss(y_actual,y_pred)
 	accuracy = get_accuracy(y_actual,y_pred)
 
-	train_step = tf.train.GradientDescentOptimizer(0.1).minimize(loss)
+	train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
 
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
