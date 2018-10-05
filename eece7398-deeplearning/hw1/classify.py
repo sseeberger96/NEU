@@ -82,12 +82,12 @@ def train():
 	loss = get_loss(y_actual,y_pred)
 	accuracy = get_accuracy(y_actual,y_pred)
 
-	train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
+	train_step = tf.train.GradientDescentOptimizer(1).minimize(loss)
 
 	sess = tf.InteractiveSession()
 	tf.global_variables_initializer().run()
 
-	for i in range(700):
+	for i in range(1200):
 		s = np.arange(x_train.shape[0]) 
 		np.random.shuffle(s)
 		xTr = x_train[s]
