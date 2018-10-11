@@ -48,24 +48,24 @@ n_labels = 10
 
 # Define the directory and filename for saving the model
 cur_dir = os.getcwd()
-model_dir = str(cur_dir) + "/model/saved_model.ckpt"
+model_dir = str(cur_dir) + "/model/saved_model"
 
 
 
 # Function to initialize the input data placeholder, true label placeholder, 
 # first hidden layer neurons, second hidden layer neurons, and output layer neurons 
 def configure_layers(n_input, n_neurons, n_labels):
-	x = tf.placeholder(tf.float32, [None, n_input]) 
-	y_actual = tf.placeholder(tf.int64, [None])
+	x = tf.placeholder(tf.float32, [None, n_input], name="x") 
+	y_actual = tf.placeholder(tf.int64, [None], name="y_actual")
 	W = {
-		'first_layer': tf.Variable(tf.random_normal([n_input, n_neurons])), 
-		'second_layer': tf.Variable(tf.random_normal([n_neurons,n_neurons_second])),
-		'out_layer': tf.Variable(tf.random_normal([n_neurons_second,n_labels]))
+		'first_layer': tf.Variable(tf.random_normal([n_input, n_neurons]), name="w1"), 
+		'second_layer': tf.Variable(tf.random_normal([n_neurons,n_neurons_second]), name="w2"),
+		'out_layer': tf.Variable(tf.random_normal([n_neurons_second,n_labels]), name="w3")
 	}
 	b = {
-		'first_layer': tf.Variable(tf.zeros([n_neurons])), 
-		'second_layer': tf.Variable(tf.zeros([n_neurons_second])),
-		'out_layer': tf.Variable(tf.zeros([n_labels]))
+		'first_layer': tf.Variable(tf.zeros([n_neurons]), name="b1"), 
+		'second_layer': tf.Variable(tf.zeros([n_neurons_second]), name="b2"),
+		'out_layer': tf.Variable(tf.zeros([n_labels]), name="b3")
 	}
 
 	return x, y_actual, W, b
@@ -126,11 +126,11 @@ def train():
 	tf.global_variables_initializer().run()
 
 	# Print the output header
-	print("\nLoop | Training Loss | Training Accuracy (%) | Test Set Loss | Test Set Accuracy")
-	print("--------------------------------------------------------------------------------")
+	print("\nLoop | Training Loss | Training Accuracy (%) | Test Set Loss | Test Set Accuracy (%)")
+	print("------------------------------------------------------------------------------------")
 
 	# Perform 2000 training iterations
-	for i in range(2000):
+	for i in range(101):
 		# Shuffle the training data before each iteration to always pick a random batch of 128 
 		# images from the training data 
 		shuff = np.arange(x_train.shape[0]) 
@@ -141,7 +141,7 @@ def train():
 		batch_ys = yTr[:128]
 
 		# Run the batch through the neural network, and return the loss, training step, and accuracy of the network for that batch
-		loss_out, step, acc = sess.run([loss, train_step,accuracy], feed_dict={x: batch_xs, y_actual: batch_ys}) 
+		loss_out, step, acc = sess.run([loss, train_step, accuracy], feed_dict={x: batch_xs, y_actual: batch_ys}) 
 
 		# Consider every 100 iterations to be a training "epoch"
 		# At this point, test the neural network on all of the testing data
@@ -149,21 +149,55 @@ def train():
 		if (i % 100) == 0: 
 			test_loss, test_acc = sess.run([loss, accuracy], feed_dict={x: x_test, y_actual: y_test})
 			print(" " + str(int((i / 100) + 1)) + "      " + str(loss_out) + "            " + str(("{0:.3f}".format(acc * 100))) + "              " + str(test_loss) + "         " + str(("{0:.3f}".format(test_acc * 100)))) 
-		
+	 	
 	# Save the model to the model folder
 	saver = tf.train.Saver()
 	save_path = saver.save(sess, model_dir)	
 
 def predict():
-	pass
-	# with tf.Session() as sess:
+	# Create a new Tensorflow session 
+	sess = tf.InteractiveSession()
+	# Import the saved graph
+	saver = tf.train.import_meta_graph(str(cur_dir) + "/model/saved_model.meta")
+	# Restore the variable values from the last saved checkpoint
+	saver.restore(sess,tf.train.latest_checkpoint(str(cur_dir) + "/model/"))
 
+	# Create the graph for calling back placeholders and variables  
+	graph = tf.get_default_graph()
 
-	# 	saver.restore(sess, model_dir)
-	# 	print("Model restored.")
-	# 	test_loss, test_acc = sess.run([loss, accuracy], feed_dict={x: x_test, y_actual: y_test})
-	# 	print(test_loss)
-	# 	print(test_acc)
+	# Call back x and y_actual placeholders
+	x = graph.get_tensor_by_name("x:0")
+	y_actual = graph.get_tensor_by_name("y_actual:0")
+
+	# Call back individual layer weight matrix variables
+	w1 = graph.get_tensor_by_name("w1:0")
+	w2 = graph.get_tensor_by_name("w2:0")
+	w3 = graph.get_tensor_by_name("w3:0")
+
+	# Call back individual layer bias vector variables
+	b1 = graph.get_tensor_by_name("b1:0")
+	b2 = graph.get_tensor_by_name("b2:0")
+	b3 = graph.get_tensor_by_name("b3:0")
+
+	# Recreate the weight and bias dictionaries using the individual layer call backs
+	W = {'first_layer': w1, 'second_layer': w2, 'out_layer': w3}
+	b = {'first_layer': b1, 'second_layer': b2, 'out_layer': b3}
+
+	# Define method for making and applying the neural network model using the saved variables and recalled placeholders
+	y_pred = make_model(x,W,b)
+	# Define method for returning the loss of the saved neural network's results
+	loss = get_loss(y_actual,y_pred)
+	# Define method for returning the accuracy of the saved neural network's results
+	accuracy = get_accuracy(y_actual,y_pred)
+
+	print("Model restored\n")
+
+	# Run the full test data set through the saved (i.e. already trained) neural network 
+	test_loss, test_acc = sess.run([loss, accuracy], feed_dict={x: x_test, y_actual: y_test})
+	
+	# Print Results to the user
+	print("Full Test Set Loss:         " + str(test_loss))
+	print("Full Test Set Accuracy (%): " + str(("{0:.3f}".format(test_acc * 100))) + "\n")
 
 
 
@@ -172,9 +206,7 @@ if __name__ == '__main__':
 		train()
 	elif sys.argv[1] == 'predict':
 		predict()
-		print("NOTE: The 'predict' method is actually not included as updated homework requirements stated that it was not necessary\nSee test results from running the 'train' method instead")
 	else:
 		print("\nNot a valid argument, please use an argument in one of the following formats...")
 		print("python classify.py train\npython classify.py predict xxx.png\n")
-		print("NOTE: The 'predict' method is actually not included as updated homework requirements stated that it was not necessary\nSee test results from running the 'train' method instead")
 
