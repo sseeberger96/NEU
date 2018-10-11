@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/sseeberger/Documents/Github/NEU/eece7398-deeplearning/hw1/model/saved_model.ckpt"
+all_model_checkpoint_paths: "/Users/sseeberger/Documents/Github/NEU/eece7398-deeplearning/hw1/model/saved_model.ckpt"
