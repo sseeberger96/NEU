@@ -1,3 +1,11 @@
+#
+#   This program designs a neural network for classifying the image data in the CIFAR-10 dataset
+# 	The neural network is designed to have two hidden layers, with 2000 neurons and 1000 neurons respectively
+#	The network uses a softmax cross-entropy loss calculation for its loss function, and uses the Adam optimizer for performing training steps
+#	The network also makes use of mini-batch training, batch normalization, and the ReLU activation function to perform training
+#	NOTE: This neural network only uses a linear classifier between layers. No convolutional layers were utilized. 
+#
+
 import tensorflow as tf
 from keras.datasets import cifar10 
 import cv2
@@ -6,7 +14,7 @@ import sys
 import os
 
 
-# Load in the CIFAR10 training data and test data
+# Load in the CIFAR-10 training data and test data
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
 # Reshape the training images into 1 x 3072 vectors, make the data type of the image data float32, 
@@ -38,6 +46,7 @@ n_neurons_second = 1000
 # Define the number of labels for classifying
 n_labels = 10
 
+# Define the directory and filename for saving the model
 cur_dir = os.getcwd()
 model_dir = str(cur_dir) + "/model/saved_model.ckpt"
 
@@ -106,7 +115,11 @@ def train():
 
 	# Use the gradient descent optimizer to determine in what direction and by how much to  
 	# adjust the weights and biases for the next training step
-	train_step = tf.train.GradientDescentOptimizer(1).minimize(loss)
+	# train_step = tf.train.GradientDescentOptimizer(0.4).minimize(loss)
+
+	# Use the adam optimizer to determine in what direction and by how much to  
+	# adjust the weights and biases for the next training step
+	train_step = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-08).minimize(loss)
 
 	# Initialize and run the Tensorflow session
 	sess = tf.InteractiveSession()
@@ -116,16 +129,16 @@ def train():
 	print("\nLoop | Training Loss | Training Accuracy (%) | Test Set Loss | Test Set Accuracy")
 	print("--------------------------------------------------------------------------------")
 
-	# Perform 1501 training iterations
-	for i in range(1501):
-		# Shuffle the training data before each iteration to always pick a random batch of 100 
+	# Perform 2000 training iterations
+	for i in range(2000):
+		# Shuffle the training data before each iteration to always pick a random batch of 128 
 		# images from the training data 
-		s = np.arange(x_train.shape[0]) 
-		np.random.shuffle(s)
-		xTr = x_train[s]
-		yTr = y_train[s]
-		batch_xs = xTr[:100]
-		batch_ys = yTr[:100]
+		shuff = np.arange(x_train.shape[0]) 
+		np.random.shuffle(shuff)
+		xTr = x_train[shuff]
+		yTr = y_train[shuff]
+		batch_xs = xTr[:128]
+		batch_ys = yTr[:128]
 
 		# Run the batch through the neural network, and return the loss, training step, and accuracy of the network for that batch
 		loss_out, step, acc = sess.run([loss, train_step,accuracy], feed_dict={x: batch_xs, y_actual: batch_ys}) 
@@ -135,8 +148,11 @@ def train():
 		# Print both the training and testing results to the user
 		if (i % 100) == 0: 
 			test_loss, test_acc = sess.run([loss, accuracy], feed_dict={x: x_test, y_actual: y_test})
-			print(" " + str(int((i / 100) + 1)) + "      " + str(loss_out) + "           " + str(("{0:.3f}".format(acc * 100))) + "             " + str(test_loss) + "        " + str(("{0:.3f}".format(test_acc * 100)))) 
+			print(" " + str(int((i / 100) + 1)) + "      " + str(loss_out) + "            " + str(("{0:.3f}".format(acc * 100))) + "              " + str(test_loss) + "         " + str(("{0:.3f}".format(test_acc * 100)))) 
 		
+	# Save the model to the model folder
+	saver = tf.train.Saver()
+	save_path = saver.save(sess, model_dir)	
 
 def predict():
 	pass
@@ -156,8 +172,9 @@ if __name__ == '__main__':
 		train()
 	elif sys.argv[1] == 'predict':
 		predict()
+		print("NOTE: The 'predict' method is actually not included as updated homework requirements stated that it was not necessary\nSee test results from running the 'train' method instead")
 	else:
 		print("\nNot a valid argument, please use an argument in one of the following formats...")
 		print("python classify.py train\npython classify.py predict xxx.png\n")
-		print("NOTE: The 'predict' method is actually not included as updated homework requirements stated that it was not necessary")
+		print("NOTE: The 'predict' method is actually not included as updated homework requirements stated that it was not necessary\nSee test results from running the 'train' method instead")
 
