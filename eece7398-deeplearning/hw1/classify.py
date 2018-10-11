@@ -17,6 +17,13 @@ import os
 # Load in the CIFAR-10 training data and test data
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
+# # Code for writing certain test images out to png images for later image testing
+# cv2.imwrite('ex1.png', x_test[0])
+# cv2.imwrite('ex2.png', x_test[5001])
+# cv2.imwrite('ex3.png', x_test[10])
+# cv2.imwrite('ex4.png', x_test[9000])
+# cv2.imwrite('ex5.png', x_test[123])
+
 # Reshape the training images into 1 x 3072 vectors, make the data type of the image data float32, 
 # and normalize the image data points to be between 0 and 1
 x_train = np.reshape(x_train, (x_train.shape[0], -1))
@@ -130,7 +137,7 @@ def train():
 	print("------------------------------------------------------------------------------------")
 
 	# Perform 2000 training iterations
-	for i in range(101):
+	for i in range(2001):
 		# Shuffle the training data before each iteration to always pick a random batch of 128 
 		# images from the training data 
 		shuff = np.arange(x_train.shape[0]) 
@@ -150,11 +157,13 @@ def train():
 			test_loss, test_acc = sess.run([loss, accuracy], feed_dict={x: x_test, y_actual: y_test})
 			print(" " + str(int((i / 100) + 1)) + "      " + str(loss_out) + "            " + str(("{0:.3f}".format(acc * 100))) + "              " + str(test_loss) + "         " + str(("{0:.3f}".format(test_acc * 100)))) 
 	 	
-	# Save the model to the model folder
+	# Save the model to the model folder 
 	saver = tf.train.Saver()
 	save_path = saver.save(sess, model_dir)	
 
-def predict():
+
+# Main function for testing the neural network 
+def test(image_path):
 	# Create a new Tensorflow session 
 	sess = tf.InteractiveSession()
 	# Import the saved graph
@@ -192,21 +201,43 @@ def predict():
 
 	print("Model restored\n")
 
-	# Run the full test data set through the saved (i.e. already trained) neural network 
-	test_loss, test_acc = sess.run([loss, accuracy], feed_dict={x: x_test, y_actual: y_test})
-	
-	# Print Results to the user
-	print("Full Test Set Loss:         " + str(test_loss))
-	print("Full Test Set Accuracy (%): " + str(("{0:.3f}".format(test_acc * 100))) + "\n")
+	if image_path == None: 
+		# Run the full test data set through the saved (i.e. already trained) neural network 
+		test_loss, test_acc, y_pred = sess.run([loss, accuracy, y_pred], feed_dict={x: x_test, y_actual: y_test})
+		
+		# Print Results to the user
+		print("Full Test Set Loss:         " + str(test_loss))
+		print("Full Test Set Accuracy (%): " + str(("{0:.3f}".format(test_acc * 100))) + "\n")
+	else: 
+		test_image = cv2.imread(image_path,1)
+		# cv2.imshow('image',test_image)
+		# cv2.waitKey(0)
+		# cv2.destroyAllWindows()
+		test_image = np.reshape(test_image, (1, -1))
+		test_image = test_image.astype('float32')
+		test_image = test_image / 255.0
+
+		pred = sess.run(tf.argmax(y_pred, 1), feed_dict={x: test_image})
+		# print(pred)
+		pred_index = int(pred[0])
+
+		label_list = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+		print("The neural network predicts that the input image is a....  " + label_list[pred_index] + "\n")
+		print("NOTE: This function does not seem to be working properly. However, as it was no longer required for the homework assignment, I did not figure out a way to fix it.\n")
 
 
 
 if __name__ == '__main__':
-	if sys.argv[1] == 'train':
-		train()
-	elif sys.argv[1] == 'predict':
-		predict()
+	if len(sys.argv) > 1: 
+		if sys.argv[1] == 'train':
+			train()
+		elif sys.argv[1] == 'test':
+			if len(sys.argv) == 3: 
+				test(sys.argv[2])
+			else: 
+				test(None)
 	else:
 		print("\nNot a valid argument, please use an argument in one of the following formats...")
-		print("python classify.py train\npython classify.py predict xxx.png\n")
+		print("python classify.py train\npython classify.py test\n")
 
