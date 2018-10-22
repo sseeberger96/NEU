@@ -157,14 +157,37 @@ class seeNet (object):
         
         pred, convLayer1 = self.sess.run([self.predict, self.firstConvOutput],feed_dict={self.x: inputX})
         # print(convLayer1)
-        # cv2.imwrite('ex1.png', convLayer1)
-        print(convLayer1.shape)
+        # cv2.imwrite('ex1.png', convLayer1[0,:,:,6])
+        # print(convLayer1.shape)
         convLayer1 = np.squeeze(convLayer1)
         blackImgs = np.zeros((4,28,28))
-        print(blackImgs)
-        print(blackImgs.shape)
-        np.append(convLayer1, blackImgs)
-        print(convLayer1.shape)
+        # print(blackImgs)
+        # print(blackImgs.shape)
+        # convLayer1 = np.append(np.transpose(convLayer1), blackImgs,axis=0)
+        # # print(convLayer1)
+        # # print(convLayer1.shape)
+        # convLayer1 = np.reshape(convLayer1, (168,168))
+        # cv2.imwrite('ex2.png', convLayer1)
+
+        formIm = [0, 0, 0, 0, 0, 0] 
+
+        for u in range(0,6): 
+            for v in range(0,6): 
+                if v == 0:
+                    formIm[u] = np.squeeze(convLayer1[:,:,(6*u)+v])
+                else: 
+                    if (6*u)+v > 31: 
+                        formIm[u] = np.append(formIm[u], np.zeros((28,28)), axis=1)
+                    else:
+                        formIm[u] = np.append(formIm[u], np.squeeze(convLayer1[:,:,(6*u)+v]), axis=1)
+
+        # print(formIm)
+        outIm = formIm[0]
+        for k in range(1,6):
+            outIm = np.append(outIm, formIm[k], axis=0)
+
+        cv2.imwrite('ex2.png', outIm)
+
 
         return pred
 
