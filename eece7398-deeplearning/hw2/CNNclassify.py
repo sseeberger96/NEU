@@ -1,3 +1,15 @@
+#
+#   This program designs a neural network for classifying the image data in the CIFAR-10 dataset
+#   The neural network is designed to have five hidden layers. The structure of the network is as follows.. 
+#       - Layer 1: conv(5x5x32) stride = 1 --> batch norm. --> dropout(0.8 keep prob) --> ReLU --> max pooling(2x2) stride = 2
+#       - Layer 2: conv(3x3x64) stride = 1 --> batch norm. --> dropout(0.8 keep prob) --> ReLU
+#       - Layer 3: conv(3x3x128) stride = 1 --> batch norm. --> dropout(0.8 keep prob) --> ReLU
+#       - Layer 4: FC(1000 neurons) --> batch norm. --> ReLU 
+#       - Layer 5: FC(100 neurons) --> batch norm. --> ReLU
+#   The network uses a hinge loss calculation for its loss function, and uses the Adam optimizer for performing training steps
+#   The network also makes use of mini-batch training
+# 
+
 import sys
 import tensorflow as tf
 import numpy as np
@@ -6,19 +18,19 @@ import os
 import cv2
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+# Define CIFAR-10 classes
 cifar10Classes = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 
 class seeNet (object):
-    def __init__ (self, isTrain=1):
+    # Initialize Network Model
+    def __init__ (self, training=1):
         nHNeurons = [1000, 100]
         nLabels = 10
-
 
         self.x = tf.placeholder(name="x", shape=[None, 32, 32, 3], dtype=tf.float32)
         self.yActual = tf.placeholder(name="yActual", shape=[None], dtype=tf.int64)
 
-
-
+        # Define weights and biases
         W = {
         'first_layer': tf.get_variable(name="w1", shape=[5, 5, 3, 32]), 
         'second_layer': tf.get_variable(name="w2", shape=[3, 3, 32, 64]),
@@ -36,68 +48,88 @@ class seeNet (object):
         'out_layer': tf.get_variable(name="b6", shape=nLabels),
         }
 
+        # First Hidden Layer
+        layer_one = tf.nn.conv2d(self.x, W['first_layer'], strides=[1,1,1,1], padding="VALID")
+        self.firstConvOutput = layer_one
+        layer_one = tf.nn.bias_add(layer_one, b['first_layer'])
+        if training == 1:
+            mean1, variance1 = tf.nn.moments(layer_one, axes=[0])
+            layer_one = tf.nn.batch_normalization(layer_one, mean1, variance1, None, None, 1e-3)
+            layer_one = tf.nn.dropout(layer_one, 0.8)
+        else: 
+            mean1, variance1 = tf.nn.moments(layer_one, axes=[0, 1, 2])
+            layer_one = tf.nn.batch_normalization(layer_one, mean1, variance1, None, None, 1e-3)
+        layer_one = tf.nn.relu(layer_one)
 
-
-        first = tf.nn.conv2d(self.x, W['first_layer'], strides=[1,1,1,1], padding="VALID")
-        self.firstConvOutput = first
-        first = tf.nn.bias_add(first, b['first_layer'])
-        mean1, variance1 = tf.nn.moments(first, axes=[0])
-        # scale1 = tf.Variable(tf.ones([1000]))
-        # beta1 = tf.Variable(tf.zeros([1000]))
-        layer_one = tf.nn.relu(tf.nn.batch_normalization(first, mean1, variance1, None, None, 1e-3))
-        layer_one = tf.nn.dropout(layer_one, 0.8)
         layer_one = tf.nn.max_pool(layer_one, ksize=[1, 2, 2, 1], strides=[1,2,2,1], padding="VALID")
 
-        second = tf.nn.conv2d(layer_one, W['second_layer'], strides=[1,1,1,1], padding="VALID")
-        second = tf.nn.bias_add(second, b['second_layer'])
-        mean2, variance2 = tf.nn.moments(second, axes=[0])
-        # scale2 = tf.Variable(tf.ones([1000]))
-        # beta2 = tf.Variable(tf.zeros([1000]))
-        layer_two = tf.nn.relu(tf.nn.batch_normalization(second, mean2, variance2, None, None, 1e-3))
-        layer_two = tf.nn.dropout(layer_two, 0.8)
+        # Second Hidden Layer
+        layer_two = tf.nn.conv2d(layer_one, W['second_layer'], strides=[1,1,1,1], padding="VALID")
+        layer_two = tf.nn.bias_add(layer_two, b['second_layer'])
+        if training == 1:
+            mean2, variance2 = tf.nn.moments(layer_two, axes=[0])
+            layer_two = tf.nn.batch_normalization(layer_two, mean2, variance2, None, None, 1e-3)
+            layer_two = tf.nn.dropout(layer_two, 0.8)
+        else: 
+            mean2, variance2 = tf.nn.moments(layer_two, axes=[0, 1, 2])
+            layer_two = tf.nn.batch_normalization(layer_two, mean2, variance2, None, None, 1e-3)
+        layer_two = tf.nn.relu(layer_two)
 
-        third = tf.nn.conv2d(layer_two, W['third_layer'], strides=[1,1,1,1], padding="VALID")
-        third = tf.nn.bias_add(third, b['third_layer'])
-        mean3, variance3 = tf.nn.moments(third, axes=[0])
-        # scale3 = tf.Variable(tf.ones([1000]))
-        # beta3 = tf.Variable(tf.zeros([1000]))
-        layer_three = tf.nn.relu(tf.nn.batch_normalization(third, mean3, variance3, None, None, 1e-3))
-        layer_three = tf.nn.dropout(layer_three, 0.8)
+        # Third Hidden Layer
+        layer_three = tf.nn.conv2d(layer_two, W['third_layer'], strides=[1,1,1,1], padding="VALID")
+        layer_three = tf.nn.bias_add(layer_three, b['third_layer'])
+        if training == 1:
+            mean3, variance3 = tf.nn.moments(layer_three, axes=[0])
+            layer_three = tf.nn.batch_normalization(layer_three, mean3, variance3, None, None, 1e-3)
+            layer_three = tf.nn.dropout(layer_three, 0.8)
+        else: 
+            mean3, variance3 = tf.nn.moments(layer_three, axes=[0, 1, 2])
+            layer_three = tf.nn.batch_normalization(layer_three, mean3, variance3, None, None, 1e-3)
+        layer_three = tf.nn.relu(layer_three)
 
         layer_three = tf.reshape(layer_three, [-1, 10*10*128])
 
-        fourth = tf.matmul(layer_three, W['fourth_layer'])
-        fourth = tf.nn.bias_add(fourth, b['fourth_layer'])
-        mean4, variance4 = tf.nn.moments(fourth, axes=[0])
-        # scale4 = tf.Variable(tf.ones([1000]))
-        # beta4 = tf.Variable(tf.zeros([1000]))
-        layer_four = tf.nn.relu(tf.nn.batch_normalization(fourth, mean4, variance4, None, None, 1e-3))
+        # Fourth Hidden Layer
+        layer_four = tf.matmul(layer_three, W['fourth_layer'])
+        layer_four = tf.nn.bias_add(layer_four, b['fourth_layer'])
+        if training == 1:
+            mean4, variance4 = tf.nn.moments(layer_four, axes=[0])
+            layer_four = tf.nn.batch_normalization(layer_four, mean4, variance4, None, None, 1e-3)
+        else: 
+            mean4, variance4 = tf.nn.moments(layer_four, axes=[0, 1])
+            layer_four = tf.nn.batch_normalization(layer_four, mean4, variance4, None, None, 1e-3)
+        layer_four = tf.nn.relu(layer_four)
 
-        fifth = tf.matmul(layer_four, W['fifth_layer'])
-        fifth = tf.nn.bias_add(fifth, b['fifth_layer'])
-        mean5, variance5 = tf.nn.moments(fifth, axes=[0])
-        # scale5 = tf.Variable(tf.ones([1000]))
-        # beta5 = tf.Variable(tf.zeros([1000]))
-        layer_five = tf.nn.relu(tf.nn.batch_normalization(fifth, mean5, variance5, None, None, 1e-3))
+        # Fifth Hidden Layer
+        layer_five = tf.matmul(layer_four, W['fifth_layer'])
+        layer_five = tf.nn.bias_add(layer_five, b['fifth_layer'])
+        if training == 1:
+            mean5, variance5 = tf.nn.moments(layer_five, axes=[0])
+            layer_five = tf.nn.batch_normalization(layer_five, mean5, variance5, None, None, 1e-3)
+        else: 
+            mean5, variance5 = tf.nn.moments(layer_five, axes=[0, 1])
+            layer_five = tf.nn.batch_normalization(layer_five, mean5, variance5, None, None, 1e-3)
+        layer_five = tf.nn.relu(layer_five)
 
+        # Output Layer
         y_pred = tf.matmul(layer_five,W['out_layer'])
         y_pred = tf.nn.bias_add(y_pred, b['out_layer'])
 
-
-        # Loss
+        # Define loss function and calculate loss
         totalLoss = tf.losses.hinge_loss(tf.one_hot(self.yActual, 10), logits=y_pred)
+        # Add regularization to loss
         self.meanLoss = tf.reduce_mean(totalLoss) + 1e-5*tf.nn.l2_loss(W['first_layer']) + 1e-5*tf.nn.l2_loss(W['second_layer']) + 1e-5*tf.nn.l2_loss(W['third_layer'])+ 1e-5*tf.nn.l2_loss(W['fourth_layer'])+ 1e-5*tf.nn.l2_loss(W['fifth_layer'])+ 1e-5*tf.nn.l2_loss(W['out_layer'])
 
-        # Optimizer
-        optimizer = tf.train.AdamOptimizer(1e-3)
-        self.trainStep = optimizer.minimize(self.meanLoss)
+        # Define the Adam Optimizer
+        adamOptimizer = tf.train.AdamOptimizer(1e-3)
+        self.trainStep = adamOptimizer.minimize(self.meanLoss)
 
-        # Correct Prediction and accuracy
-        correctPrediction = tf.equal(tf.argmax(y_pred, 1), self.yActual)
-        self.accuracy = tf.reduce_mean(tf.cast(correctPrediction, tf.float32))
+        # Determine accuracy
+        correctPredictionFlag = tf.equal(tf.argmax(y_pred, 1), self.yActual)
+        self.accuracy = tf.reduce_mean(tf.cast(correctPredictionFlag, tf.float32))
 
-        # Predict index
-        self.predict = tf.argmax(y_pred, 1)
+        # Determine network predicted class index
+        self.prediction = tf.argmax(y_pred, 1)
 
         # Initialize session
         tfConfig = tf.ConfigProto(allow_soft_placement=True)
@@ -106,58 +138,72 @@ class seeNet (object):
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=None)
 
-        # Log directory
-        if isTrain == 1:
+        # Setup directory for saving and loading the model
+        if training == 1:
             if tf.gfile.Exists('./model'):
                 tf.gfile.DeleteRecursively('./model')
             tf.gfile.MakeDirs('./model')
         else:
-            self.saver.restore(self.sess, './model/model.ckpt')
+            self.saver.restore(self.sess, './model/saved_model')
+            print("Model restored from file")
 
 
-    def train(self, xTr, yTr, xTe, yTe, maxSteps=1000, batchSize=128):
+    # Function to train the network
+    def train(self, xTrain, yTrain, xTest, yTest, numSteps=1000, batchSize=128):
         print('{0:>7} {1:>12} {2:>12} {3:>12} {4:>12}'.format('Loop', 'Train Loss', 'Train Acc %', 'Test Loss', 'Test Acc %'))
-        for i in range(maxSteps):
-            # Shuffle data
-            s = np.arange(xTr.shape[0])
-            np.random.shuffle(s)
-            xTr = xTr[s]
-            yTr = yTr[s]
+        for i in range(numSteps):
+            # Shuffle the training data
+            datInd = np.arange(xTrain.shape[0])
+            np.random.shuffle(datInd)
+            xTrain = xTrain[datInd]
+            yTrain = yTrain[datInd]
 
-            # Train
+            # Train in batches
             losses = []
             accuracies = []
-            for j in range(0, xTr.shape[0], batchSize):
-                xBatch = xTr[j:j + batchSize]
-                yBatch = yTr[j:j + batchSize]
+            for j in range(0, xTrain.shape[0], batchSize):
+                xBatch = xTrain[j:j + batchSize]
+                yBatch = yTrain[j:j + batchSize]
                 trainLoss, trainAccuracy, _ = self.sess.run([self.meanLoss, self.accuracy, self.trainStep], feed_dict={self.x: xBatch, self.yActual: yBatch})
                 losses.append(trainLoss)
                 accuracies.append(trainAccuracy)
             avgTrainLoss = sum(losses) / len(losses)
             avgTrainAcc = sum(accuracies) / len(accuracies)
 
-            # Test
+            # Test in batches
             losses = []
             accuracies = []
-            for j in range(0, xTe.shape[0], batchSize):
-                xBatch = xTe[j:j + batchSize]
-                yBatch = yTe[j:j + batchSize]
+            for j in range(0, xTest.shape[0], batchSize):
+                xBatch = xTest[j:j + batchSize]
+                yBatch = yTest[j:j + batchSize]
                 testLoss, testAccuracy = self.sess.run([self.meanLoss, self.accuracy], feed_dict={self.x: xBatch, self.yActual: yBatch})
                 losses.append(testLoss)
                 accuracies.append(testAccuracy)
             avgTestLoss = sum(losses) / len(losses)
             avgTestAcc = sum(accuracies) / len(accuracies)
 
-            # Log Output
-            print('{0:>7} {1:>12.4f} {2:>12.4f} {3:>12.4f} {4:>12.4f}'.format(str(i+1)+"/"+str(maxSteps), avgTrainLoss, avgTrainAcc*100, avgTestLoss, avgTestAcc*100))
+            # User Log Output
+            print('{0:>7} {1:>12.4f} {2:>12.4f} {3:>12.4f} {4:>12.4f}'.format(str(i+1)+"/"+str(numSteps), avgTrainLoss, avgTrainAcc*100, avgTestLoss, avgTestAcc*100))
 
-        savePath = self.saver.save(self.sess, './model/model.ckpt')
+        # Save the model
+        savePath = self.saver.save(self.sess, './model/saved_model')
         print('Model saved in file: {0}'.format(savePath))
 
-    def predictOutput(self, inputX):
-        
-        pred, convLayer1 = self.sess.run([self.predict, self.firstConvOutput],feed_dict={self.x: inputX})
-        convLayer1 = np.squeeze(convLayer1)
+    # Testing function to determine the network's prediction for the class of an input image (or set of images)
+    def predictOutput(self, imInput):
+        pred, convLayer1 = self.sess.run([self.prediction, self.firstConvOutput],feed_dict={self.x: imInput})
+        self.makeConvVisualization(convLayer1)
+        return pred
+
+    # Function to create the visualization for the result of the first conv layer
+    def makeConvVisualization(self, convLayer):
+        convLayer = np.squeeze(convLayer)
+
+        # Normalize convolution output to be between 0 and 255 for proper visualization
+        for m in range(0,32): 
+            convLayer[:,:,m] = convLayer[:,:,m] - np.amin(convLayer[:,:,m])
+            convLayer[:,:,m] = convLayer[:,:,m]/(np.amax(convLayer[:,:,m])/255)
+
         blackImgs = np.zeros((4,28,28))
 
         formIm = [0, 0, 0, 0, 0, 0] 
@@ -165,68 +211,69 @@ class seeNet (object):
         for u in range(0,6): 
             for v in range(0,6): 
                 if v == 0:
-                    formIm[u] = np.squeeze(convLayer1[:,:,(6*u)+v])
+                    formIm[u] = np.squeeze(convLayer[:,:,(6*u)+v])
                 else: 
                     if (6*u)+v > 31: 
                         formIm[u] = np.append(formIm[u], np.zeros((28,28)), axis=1)
                     else:
-                        formIm[u] = np.append(formIm[u], np.squeeze(convLayer1[:,:,(6*u)+v]), axis=1)
+                        formIm[u] = np.append(formIm[u], np.squeeze(convLayer[:,:,(6*u)+v]), axis=1)
 
-        # print(formIm)
         outIm = formIm[0]
         for k in range(1,6):
             outIm = np.append(outIm, formIm[k], axis=0)
 
-        cv2.imwrite('ex2.png', outIm)
+        # Write out the visualization image
+        cv2.imwrite('CONV_rslt.png', outIm)
 
+    # Function for getting the accuracy of the network when tested with a given set of labeled inputs
+    def getAccuracy(self, imInput, imLabel):
+        return self.sess.run([self.accuracy],feed_dict={self.x: imInput, self.y: imLabel})
 
-        return pred
-
-    def getAcc(self, inputX, inputY):
-        return self.sess.run([self.accuracy],feed_dict={self.x: inputX, self.y: inputY})
-
+# Function for reading in and preprocessing an input image
 def readImage(inputImage, meanValue):
-    img = cv2.imread(inputImage)
-    h_img, w_img, _ = img.shape
-    imgResize = cv2.resize(img, (32, 32))
-    imgRGB = cv2.cvtColor(imgResize, cv2.COLOR_BGR2RGB)
-    imgResizeNp = np.asarray(imgRGB)
-    imgResizeNp = np.expand_dims(imgResizeNp, axis=0)
-    imgResizeNp = imgResizeNp.astype(np.float)
-    imgResizeNp -= meanValue
-    # imgResizeNp = np.reshape(imgResizeNp, (imgResizeNp.shape[0], -1))
-    return imgResizeNp
+    im = cv2.imread(inputImage)
+    imgHeight, imgWidth, _ = im.shape
+    im = cv2.resize(im, (32, 32))
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    im = np.asarray(im)
+    im = np.expand_dims(im, axis=0)
+    im = im.astype(np.float)
+    im -= meanValue
+    return im
 
+# Function to import and preprocess the CIFAR-10 dataset
 def getCifar10():
-    (x1, y1), (x2, y2) = cifar10.load_data()
+    (xTrain, yTrain), (xTest, yTest) = cifar10.load_data()
 
-    # Format data
-    x1 = x1.astype(np.float)
-    x2 = x2.astype(np.float)
-    y1 = np.squeeze(y1)
-    y2 = np.squeeze(y2)
+    # Format input data
+    xTrain = xTrain.astype(np.float)
+    xTest = xTest.astype(np.float)
+    yTrain = np.squeeze(yTrain)
+    yTest = np.squeeze(yTest)
 
-    # Normalize the data by subtract the mean image
-    meanImage = np.mean(x1, axis=0)
-    x1 -= meanImage
-    x2 -= meanImage
+    # Normalize the data by subtracting the mean image
+    meanImage = np.mean(xTrain, axis=0)
+    xTrain -= meanImage
+    xTest -= meanImage
 
-    # Reshape data from channel to rows
-    # x1 = np.reshape(x1, (x1.shape[0], -1))
-    # x2 = np.reshape(x2, (x2.shape[0], -1))
-
-    return (x1, y1), (x2, y2), meanImage
+    return (xTrain, yTrain), (xTest, yTest), meanImage
 
 # Main function
-if sys.argv[1] == "train":
-    classify = seeNet(isTrain=1)
-    (xTrain, yTrain), (xTest, yTest), mV = getCifar10()
-    classify.train(xTrain, yTrain, xTest, yTest, maxSteps=25)
+if __name__ == '__main__':
+    if len(sys.argv) > 1: 
+        if sys.argv[1] == 'train':
+            network = seeNet(training=1)
+            (xDataTrain, yDataTrain), (xDataTest, yDataTest), meanIm = getCifar10()
+            network.train(xDataTrain, yDataTrain, xDataTest, yDataTest, numSteps=25)
+        elif sys.argv[1] == 'test':
+            network = seeNet(training=0)
+            (xDataTrain, yDataTrain), (xDataTest, yDataTest), meanIm = getCifar10()
+            predictedClass = cifar10Classes[np.squeeze(network.predictOutput(readImage(sys.argv[2], meanIm)))]
+            print("\nThe network predicts that this image is of a:  %s\n" % predictedClass)
 
-elif sys.argv[1] == 'test':
-    classify = seeNet(isTrain=0)
-    (xTrain, yTrain), (xTest, yTest), mV = getCifar10()
-    print(cifar10Classes[np.squeeze(classify.predictOutput(readImage(sys.argv[2], mV)))])
+    else:
+        print("\nNot a valid argument, please use an argument in one of the following formats...")
+        print("python CNNclassify.py train\npython CNNclassify.py test xxx.png\n")
 
 
 
