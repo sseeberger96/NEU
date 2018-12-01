@@ -1,22 +1,25 @@
-""" A neural chatbot using sequence to sequence model with
-attentional decoder. 
-This is based on Google Translate Tensorflow model 
+""" 
+This file was taken directly from the the neural chatbot model created by Chip Huyen, which can be found here... 
+
+https://github.com/chiphuyen/stanford-tensorflow-tutorials/tree/master/assignments/chatbot
+
+This chatbot model itself was based off of the Google Translate Tensorflow model, which
+is cited as follows... 
+
 https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/
 Sequence to sequence model by Cho et al.(2014)
 Created by Chip Huyen (chiphuyen@cs.stanford.edu)
 CS20: "TensorFlow for Deep Learning Research"
 cs20.stanford.edu
-This file contains the hyperparameters for the model.
-See README.md for instruction on how to run the starter code.
+
+The parameters in this file were simply modified to meet the requirements of the neural machine translator. 
+Therefore, some parameters were deleted from the original file, some were added, and others simply had their 
+values changed. 
 """
 
 # parameters for processing the dataset
-# DATA_PATH = '../data/'
-# CONVO_FILE = 'movie_conversations.txt'
-# LINE_FILE = 'movie_lines.txt'
-OUTPUT_FILE = 'output_convo.txt'
 PROCESSED_PATH = 'data'
-CPT_PATH = 'model'
+MODEL_PATH = 'model'
 
 THRESHOLD = 1
 
@@ -44,7 +47,7 @@ MAX_GRAD_NORM = 5.0
 
 NUM_SAMPLES = 18777
 
-MAX_ITERATION = 30001
+MAX_ITERATION = 31401
 
 ENC_VOCAB = 41303
 DEC_VOCAB = 18778

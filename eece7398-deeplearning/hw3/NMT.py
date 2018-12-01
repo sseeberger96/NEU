@@ -2,10 +2,10 @@
 input English text data into its corresponding Vietnamese text data. 
 
 Note that the code used to produce this model is heavily based off of the neural chatbot
-model created by Chip Huyen, which can be found here... 
+model created by Chip Huyen (much of the code is identical), which can be found here... 
 https://github.com/chiphuyen/stanford-tensorflow-tutorials/tree/master/assignments/chatbot
 
-This chatbot model itself was based heavily off of the Google Translate Tensorflow model, which
+This chatbot model itself was based off of the Google Translate Tensorflow model, which
 is cited as follows... 
 
 https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/
@@ -22,6 +22,7 @@ python NMT.py translate
 
 For training, testing on a full dataset, and translating user input sentences, respectively. 
 """
+
 import argparse
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
@@ -32,7 +33,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from model import ChatBotModel
+from model import NMTModel
 import config
 import data
 
@@ -109,59 +110,15 @@ def _get_buckets():
     return test_buckets, data_buckets, train_buckets_scale
 
 def _check_restore_parameters(sess, saver):
-    """ Restore the previously trained parameters if there are any. """
-    # ckpt = tf.train.get_checkpoint_state(os.path.dirname(config.CPT_PATH + '/checkpoint'))
-    # if ckpt and ckpt.model_checkpoint_path:
-    #     print("Loading parameters for the Chatbot")
-    #     saver.restore(sess, ckpt.model_checkpoint_path)
-    # else:
-    #     print("Initializing fresh parameters for the Chatbot")
-    model_path = os.path.join(config.CPT_PATH, 'saved_model-31400')
-    if os.path.isfile(os.path.join(config.CPT_PATH, 'checkpoint')):
-        print("Loading saved model... ")
-        saver.restore(sess, model_path)
+    """ Restore the previously trained model if there is a saved model. """
+
+    checkpoint = tf.train.get_checkpoint_state(os.path.dirname(config.MODEL_PATH + '/checkpoint'))
+    if os.path.isfile(os.path.join(config.MODEL_PATH, 'checkpoint')):
+        print("Loading saved NMT model from folder... ")
+        saver.restore(sess, checkpoint.model_checkpoint_path)
+        print("Model loaded successfully!")
     else: 
         print("No saved model. Initializing a new model.")
-
-
-def train():
-    """ Train the NMT """
-    test_buckets, data_buckets, train_buckets_scale = _get_buckets()
-    # in train mode, we need to create the backward path, so forwrad_only is False
-    model = ChatBotModel(False, config.BATCH_SIZE)
-    model.build_graph()
-
-    saver = tf.train.Saver()
-
-    with tf.Session() as sess:
-        print('Running session')
-        sess.run(tf.global_variables_initializer())
-        _check_restore_parameters(sess, saver)
-
-        iteration = model.global_step.eval()
-        total_loss = 0
-        while True:
-            bucket_id = _get_random_bucket(train_buckets_scale)
-            encoder_inputs, decoder_inputs, decoder_masks = data.get_batch(data_buckets[bucket_id], 
-                                                                           bucket_id,
-                                                                           batch_size=config.BATCH_SIZE)
-            start = time.time()
-            _, step_loss, _ = run_step(sess, model, encoder_inputs, decoder_inputs, decoder_masks, bucket_id, False)
-            total_loss += step_loss
-            iteration += 1
-
-            if iteration % 100 == 0:
-                print('Iteration {}: Loss {}, Time {}'.format(iteration, total_loss/100, time.time() - start))
-                start = time.time()
-                total_loss = 0
-
-                if tf.gfile.Exists(config.CPT_PATH):
-                    tf.gfile.DeleteRecursively(config.CPT_PATH)
-                tf.gfile.MakeDirs(config.CPT_PATH)
-
-                saver.save(sess, os.path.join(config.CPT_PATH, 'saved_model'), global_step=model.global_step)
-
-                sys.stdout.flush()
 
 def _get_user_input():
     """ Get user's input, which will be transformed into encoder input later """
@@ -189,13 +146,24 @@ def _construct_response(output_logits, inv_dec_vocab):
     # Print out sentence corresponding to outputs.
     return " ".join([tf.compat.as_str(inv_dec_vocab[output]) for output in outputs])
 
-def chat():
-    """ in test mode, we don't to create the backward path
-    """
-    _, enc_vocab = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.enc'))
-    inv_dec_vocab, _ = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.dec'))
 
-    model = ChatBotModel(True, batch_size=1)
+def getBLEU(ref, hyp):
+    """ Function to get the BLEU score for a single testing iteration
+    Returns the BLEU score for a given reference sentence (ref) and hypothesis 
+    sentence output by the neural network (hyp)
+    Utilizes smoothing method 1
+    """
+    smoothingFunc = SmoothingFunction()
+    bleuScore = sentence_bleu(ref, hyp, smoothing_function=smoothingFunc.method1)
+    return bleuScore
+
+def train():
+    """ 
+    Function to train the NMT, given the English and Vietnamese training datasets
+    """
+    test_buckets, data_buckets, train_buckets_scale = _get_buckets()
+    # In training mode, we need to create the backward path, so forwrad_only is False
+    model = NMTModel(False, config.BATCH_SIZE)
     model.build_graph()
 
     saver = tf.train.Saver()
@@ -203,63 +171,49 @@ def chat():
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         _check_restore_parameters(sess, saver)
-        output_file = open(os.path.join(config.PROCESSED_PATH, config.OUTPUT_FILE), 'a+')
-        # Decode from standard input.
-        max_length = config.BUCKETS[-1][0]
-        print('Welcome to TensorBro. Say something. Enter to exit. Max length is', max_length)
-        while True:
-            line = _get_user_input()
-            if len(line) > 0 and line[-1] == '\n':
-                line = line[:-1]
-            if line == '':
-                break
-            output_file.write('HUMAN ++++ ' + line + '\n')
-            # Get token-ids for the input sentence.
-            token_ids = data.sentence2id(enc_vocab, str(line))
-            if (len(token_ids) > max_length):
-                print('Max length I can handle is:', max_length)
-                line = _get_user_input()
-                continue
-            # Which bucket does it belong to?
-            bucket_id = _find_right_bucket(len(token_ids))
-            # Get a 1-element batch to feed the sentence to the model.
-            encoder_inputs, decoder_inputs, decoder_masks = data.get_batch([(token_ids, [])], 
-                                                                            bucket_id,
-                                                                            batch_size=1)
-            # Get output logits for the sentence.
-            _, _, output_logits = run_step(sess, model, encoder_inputs, decoder_inputs,
-                                           decoder_masks, bucket_id, True)
-            response = _construct_response(output_logits, inv_dec_vocab)
-            print(response)
-            output_file.write('BOT ++++ ' + response + '\n')
-        output_file.write('=============================================\n')
-        output_file.close()
+        iteration = model.global_step.eval()
+        total_loss = 0
+        print('Training... ')
+        while iteration < config.MAX_ITERATION:
+            bucket_id = _get_random_bucket(train_buckets_scale)
+            encoder_inputs, decoder_inputs, decoder_masks = data.get_batch(data_buckets[bucket_id], 
+                                                                           bucket_id,
+                                                                           batch_size=config.BATCH_SIZE)
+            start = time.time()
+            _, step_loss, _ = run_step(sess, model, encoder_inputs, decoder_inputs, decoder_masks, bucket_id, False)
+            total_loss += step_loss
+            iteration += 1
+
+            if iteration % 100 == 0:
+                if tf.gfile.Exists(config.MODEL_PATH):
+                    tf.gfile.DeleteRecursively(config.MODEL_PATH)
+                tf.gfile.MakeDirs(config.MODEL_PATH)
+                saver.save(sess, os.path.join(config.MODEL_PATH, 'saved_model'), global_step=model.global_step)
+
+            if iteration % 1000 == 0:
+                print('Iteration {}: Loss {}, Time {}'.format(iteration, total_loss/1000, time.time() - start))
+                start = time.time()
+                total_loss = 0
+
+                sys.stdout.flush()
 
 
-def getBLEU(ref, hyp):
-    smoothing = SmoothingFunction()
-    bleuScore = sentence_bleu(ref, hyp, smoothing_function=smoothing.method1)
-    return bleuScore
-
-
-def test(): 
-    _, enc_vocab = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.enc'))
+def test():
+    """ 
+    Function to test the NMT, given the English and Vietnamese test datasets
+    Calculates the average BLEU score for the whole test dataset
+    """
+    inv_enc_vocab, _ = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.enc'))
     inv_dec_vocab, _ = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.dec'))
 
     enc_file = open(os.path.join(config.PROCESSED_PATH, 'test_ids.enc'), 'r')
-    # dec_file = open(os.path.join(config.PROCESSED_PATH, 'test.dec'), 'r')
     dec_file = open(os.path.join(config.PROCESSED_PATH, 'test_ids.dec'), 'r')
 
     enc_lines = enc_file.read().splitlines()
     dec_lines = dec_file.read().splitlines()
 
-    # print(enc_lines[0])
-    # print(dec_lines[0])
 
-    # print(enc_lines[0].split())
-    # print(dec_lines[0].split())
-
-    model = ChatBotModel(True, batch_size=1)
+    model = NMTModel(True, batch_size=1)
     model.build_graph()
 
     saver = tf.train.Saver()
@@ -269,17 +223,16 @@ def test():
         sess.run(tf.global_variables_initializer())
         _check_restore_parameters(sess, saver)
         max_length = config.BUCKETS[-1][0]
+        print("Testing full test dataset... ")
         for i in range(len(enc_lines)):
             encode = [int(id_) for id_ in enc_lines[i].split()]
-            # target = dec_lines[i].split()
             target = [int(id_) for id_ in dec_lines[i].split()]
             target = target[1:target.index(config.EOS_ID)]
             target = [inv_dec_vocab[word] for word in target]
 
-
-
             if len(encode) <= max_length:
                 bucket_id = _find_right_bucket(len(encode))
+                # Get a 1-element batch to feed the sentence to the model.
                 encoder_inputs, decoder_inputs, decoder_masks = data.get_batch([(encode, [])], 
                                                                                 bucket_id,
                                                                                 batch_size=1)
@@ -293,29 +246,88 @@ def test():
                 bleuScores.append(bleu)
 
         meanBLEU = np.mean(bleuScores)
-        print("Average BLEU: %f" % meanBLEU)
 
+        sampleEncOutput = " ".join([tf.compat.as_str(inv_enc_vocab[enc]) for enc in encode])
+        sampleDecOutput = " ".join(response)
+        print("\nSample Test Translation... ")
+        print("   Encoded Text: %s" % sampleEncOutput)
+        print("   Decoded Text: %s" % sampleDecOutput)
+
+        print("\nThe testing is complete! Average BLEU Score: %f\n" % meanBLEU)
+
+
+def translate():
+    """ 
+    Translate function for the NMT
+    This function prompts the user to input a sentence in English
+    The function then uses the previously trained NMT model to predict 
+    what the input sentence should be when translated to Vietnamese
+    The function prints the predicted translation out to the user
+    """
+    _, enc_vocab = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.enc'))
+    inv_dec_vocab, _ = data.load_vocab(os.path.join(config.PROCESSED_PATH, 'vocab.dec'))
+
+    model = NMTModel(True, batch_size=1)
+    model.build_graph()
+
+    saver = tf.train.Saver()
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        _check_restore_parameters(sess, saver)
+        max_length = config.BUCKETS[-1][0]
+        print("\nWelcome to the English-Vietnamese Neural Machine Translator!")
+        print("Type a sentence in English and hit 'enter' to translate it to Vietnamese.")
+        print("Hit 'enter' without typing anything to exit the Neural Machine Translator")
+        print("**Note: The maximum sentence length is %d words\n" % max_length)
+        while True:
+            line = _get_user_input()
+            if len(line) > 0 and line[-1] == '\n':
+                line = line[:-1]
+            if line == '':
+                break
+            # Get encoder token ids for the input sentence.
+            encIds = data.sentence2id(enc_vocab, str(line))
+            if (len(encIds) > max_length):
+                print('Error: The maximum sentence length is %d words' % max_length)
+                line = _get_user_input()
+                continue
+
+            bucket_id = _find_right_bucket(len(encIds))
+            # Get a 1-element batch to feed the sentence to the model.
+            encoder_inputs, decoder_inputs, decoder_masks = data.get_batch([(encIds, [])], 
+                                                                            bucket_id,
+                                                                            batch_size=1)
+
+            _, _, output_logits = run_step(sess, model, encoder_inputs, decoder_inputs,
+                                           decoder_masks, bucket_id, True)
+            response = _construct_response(output_logits, inv_dec_vocab)
+            print('Vietnamese Translation: %s' % response)
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', choices={'train', 'chat', 'test'},
-                        default='train', help="mode. if not specified, it's in the train mode")
-    args = parser.parse_args()
-
-    if not os.path.isfile(os.path.join(config.PROCESSED_PATH, 'vocab.enc')):
-        # data.prepare_raw_data()
+    encoderVocabFile = os.path.join(config.PROCESSED_PATH, 'vocab.enc')
+    if not os.path.isfile(encoderVocabFile):
+        print('No vocabulary data found. Processing new vocabulary data.')
         data.process_data()
-    print('Data ready!')
-    # create checkpoints folder if there isn't one already
-    data.make_dir(config.CPT_PATH)
+        print('New vocabulary data processed!')
+    else: 
+        print('Vocabulary data loaded from folder! Folder name: %s' % config.PROCESSED_PATH)
 
-    if args.mode == 'train':
-        train()
-    elif args.mode == 'chat':
-        chat()
-    elif args.mode == 'test':
-        test()
+    # Create model folder for saving model if it does not currently exist
+    data.make_dir(config.MODEL_PATH)
+
+    if len(sys.argv) > 1: 
+        if sys.argv[1] == 'train':
+            train()
+        elif sys.argv[1] == 'test':
+            test()
+        elif sys.argv[1] == 'translate':
+            translate()
+
+    else:
+        print("\nNot a valid argument, please use an argument in one of the following formats...")
+        print("python NMT.py train\npython NMT.py test\npython NMT.py translate\n")
 
 if __name__ == '__main__':
     main()

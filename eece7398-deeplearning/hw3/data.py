@@ -1,15 +1,21 @@
-""" A neural chatbot using sequence to sequence model with
-attentional decoder. 
-This is based on Google Translate Tensorflow model 
+""" 
+This file was taken directly from the the neural chatbot model created by Chip Huyen, which can be found here... 
+
+https://github.com/chiphuyen/stanford-tensorflow-tutorials/tree/master/assignments/chatbot
+
+This chatbot model itself was based off of the Google Translate Tensorflow model, which
+is cited as follows... 
+
 https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/
 Sequence to sequence model by Cho et al.(2014)
 Created by Chip Huyen (chiphuyen@cs.stanford.edu)
 CS20: "TensorFlow for Deep Learning Research"
 cs20.stanford.edu
-This file contains the code to do the pre-processing for the
-Cornell Movie-Dialogs Corpus.
-See readme.md for instruction on how to run the starter code.
+
+The file was simply modified to meet the requirements of the neural machine translator.
+Thus, functions not necessary for the neural machine translator were removed. 
 """
+
 import os
 import random
 import re
@@ -18,73 +24,6 @@ import numpy as np
 
 import config
 
-# def get_lines():
-#     id2line = {}
-#     file_path = os.path.join(config.DATA_PATH, config.LINE_FILE)
-#     print(config.LINE_FILE)
-#     with open(file_path, 'r', errors='ignore') as f:
-#         # lines = f.readlines()
-#         # for line in lines:
-#         i = 0
-#         try:
-#             for line in f:
-#                 parts = line.split(' +++$+++ ')
-#                 if len(parts) == 5:
-#                     if parts[4][-1] == '\n':
-#                         parts[4] = parts[4][:-1]
-#                     id2line[parts[0]] = parts[4]
-#                 i += 1
-#         except UnicodeDecodeError:
-#             print(i, line)
-#     return id2line
-
-# def get_convos():
-#     """ Get conversations from the raw data """
-#     file_path = os.path.join(config.DATA_PATH, config.CONVO_FILE)
-#     convos = []
-#     with open(file_path, 'r') as f:
-#         for line in f.readlines():
-#             parts = line.split(' +++$+++ ')
-#             if len(parts) == 4:
-#                 convo = []
-#                 for line in parts[3][1:-2].split(', '):
-#                     convo.append(line[1:-1])
-#                 convos.append(convo)
-
-#     return convos
-
-# def question_answers(id2line, convos):
-#     """ Divide the dataset into two sets: questions and answers. """
-#     questions, answers = [], []
-#     for convo in convos:
-#         for index, line in enumerate(convo[:-1]):
-#             questions.append(id2line[convo[index]])
-#             answers.append(id2line[convo[index + 1]])
-#     assert len(questions) == len(answers)
-#     return questions, answers
-
-# def prepare_dataset(questions, answers):
-#     # create path to store all the train & test encoder & decoder
-#     make_dir(config.PROCESSED_PATH)
-    
-#     # random convos to create the test set
-#     test_ids = random.sample([i for i in range(len(questions))],config.TESTSET_SIZE)
-    
-#     filenames = ['train.enc', 'train.dec', 'test.enc', 'test.dec']
-#     files = []
-#     for filename in filenames:
-#         files.append(open(os.path.join(config.PROCESSED_PATH, filename),'w'))
-
-#     for i in range(len(questions)):
-#         if i in test_ids:
-#             files[2].write(questions[i] + '\n')
-#             files[3].write(answers[i] + '\n')
-#         else:
-#             files[0].write(questions[i] + '\n')
-#             files[1].write(answers[i] + '\n')
-
-#     for file in files:
-#         file.close()
 
 def make_dir(path):
     """ Create a directory if there isn't one already. """
@@ -173,15 +112,8 @@ def token2id(data, mode):
             ids.append(vocab['<\s>'])
         out_file.write(' '.join(str(id_) for id_ in ids) + '\n')
 
-# def prepare_raw_data():
-#     print('Preparing raw data into train set and test set ...')
-#     id2line = get_lines()
-#     convos = get_convos()
-#     questions, answers = question_answers(id2line, convos)
-#     prepare_dataset(questions, answers)
-
 def process_data():
-    print('Preparing data to be model-ready ...')
+    # print('Preparing data to be model-ready ...')
     build_vocab('train.enc')
     build_vocab('train.dec')
     token2id('train', 'enc')
@@ -196,8 +128,8 @@ def load_data(enc_filename, dec_filename, max_training_size=None):
     data_buckets = [[] for _ in config.BUCKETS]
     i = 0
     while encode and decode:
-        if (i + 1) % 10000 == 0:
-            print("Bucketing conversation number", i)
+        # if (i + 1) % 10000 == 0:
+        #     print("Bucketing conversation number", i)
         encode_ids = [int(id_) for id_ in encode.split()]
         decode_ids = [int(id_) for id_ in decode.split()]
         for bucket_id, (encode_max_size, decode_max_size) in enumerate(config.BUCKETS):

@@ -1,3 +1,22 @@
+""" 
+This file was taken directly from the the neural chatbot model created by Chip Huyen, which can be found here... 
+
+https://github.com/chiphuyen/stanford-tensorflow-tutorials/tree/master/assignments/chatbot
+
+This chatbot model itself was based off of the Google Translate Tensorflow model, which
+is cited as follows... 
+
+https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/
+Sequence to sequence model by Cho et al.(2014)
+Created by Chip Huyen (chiphuyen@cs.stanford.edu)
+CS20: "TensorFlow for Deep Learning Research"
+cs20.stanford.edu
+
+The file was simply modified to meet the requirements of the neural machine translator.
+Namely, some unecessary print functions were commented out and the "ChatBotModel" class was changed to be 
+named the "NMTModel" class to make the model name more appropriate for this application. 
+"""
+
 import time
 
 import numpy as np
@@ -5,17 +24,17 @@ import tensorflow as tf
 
 import config
 
-class ChatBotModel:
+class NMTModel:
     def __init__(self, forward_only, batch_size):
         """forward_only: if set, we do not construct the backward pass in the model.
         """
-        print('Initialize new model')
+        # print('Initialize new model')
         self.fw_only = forward_only
         self.batch_size = batch_size
 
     def _create_placeholders(self):
         # Feeds for inputs. It's a list of placeholders
-        print('Create placeholders')
+        # print('Create placeholders')
         self.encoder_inputs = [tf.placeholder(tf.int32, shape=[None], name='encoder{}'.format(i))
                                for i in range(config.BUCKETS[-1][0])]
         self.decoder_inputs = [tf.placeholder(tf.int32, shape=[None], name='decoder{}'.format(i))
@@ -27,7 +46,7 @@ class ChatBotModel:
         self.targets = self.decoder_inputs[1:]
 
     def _inference(self):
-        print('Create inference')
+        # print('Create inference')
         # If we use sampled softmax, we need an output projection.
         # Sampled softmax only makes sense if we sample less than vocabulary size.
         if config.NUM_SAMPLES > 0 and config.NUM_SAMPLES < config.DEC_VOCAB:
@@ -49,7 +68,7 @@ class ChatBotModel:
         self.cell = tf.contrib.rnn.MultiRNNCell([single_cell for _ in range(config.NUM_LAYERS)])
 
     def _create_loss(self):
-        print('Creating loss... \nIt might take a couple of minutes depending on how many buckets you have.')
+        # print('Creating loss... \nIt might take a couple of minutes depending on how many buckets you have.')
         start = time.time()
         def _seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
             setattr(tf.contrib.rnn.GRUCell, '__deepcopy__', lambda self, _: self)
@@ -86,10 +105,10 @@ class ChatBotModel:
                                         config.BUCKETS,
                                         lambda x, y: _seq2seq_f(x, y, False),
                                         softmax_loss_function=self.softmax_loss_function)
-        print('Time:', time.time() - start)
+        # print('Time:', time.time() - start)
 
     def _creat_optimizer(self):
-        print('Create optimizer... \nIt might take a couple of minutes depending on how many buckets you have.')
+        # print('Create optimizer... \nIt might take a couple of minutes depending on how many buckets you have.')
         with tf.variable_scope('training') as scope:
             self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
 
@@ -107,7 +126,7 @@ class ChatBotModel:
                     self.gradient_norms.append(norm)
                     self.train_ops.append(self.optimizer.apply_gradients(zip(clipped_grads, trainables), 
                                                             global_step=self.global_step))
-                    print('Creating opt for bucket {} took {} seconds'.format(bucket, time.time() - start))
+                    # print('Creating opt for bucket {} took {} seconds'.format(bucket, time.time() - start))
                     start = time.time()
 
 
