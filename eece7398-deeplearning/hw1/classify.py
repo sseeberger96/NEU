@@ -23,6 +23,11 @@ import os
 # cv2.imwrite('ex3.png', x_test[10])
 # cv2.imwrite('ex4.png', x_test[9000])
 # cv2.imwrite('ex5.png', x_test[123])
+cv2.imwrite('ex1.png', x_test[10])
+cv2.imwrite('ex2.png', x_test[11])
+cv2.imwrite('ex3.png', x_test[12])
+cv2.imwrite('ex4.png', x_test[13])
+cv2.imwrite('ex5.png', x_test[14])
 
 # Reshape the training images into 1 x 3072 vectors, make the data type of the image data float32, 
 # and normalize the image data points to be between 0 and 1

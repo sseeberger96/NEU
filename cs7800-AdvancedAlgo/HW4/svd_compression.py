@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-k = 50
+k = 100
 
 image = cv2.imread('prudential.jpg')
 
