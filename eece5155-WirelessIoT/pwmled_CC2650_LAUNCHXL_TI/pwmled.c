@@ -62,9 +62,9 @@ Void pwmLEDFxn(UArg arg0, UArg arg1)
 {
     PWM_Handle pwm1;
     PWM_Params params;
-    uint16_t   pwmPeriod = 3000;      // Period and duty in microseconds
-    uint16_t   duty = 0;
-    uint16_t   dutyInc = 100;
+    uint16_t   pwmPeriod = 50000;      // Period and duty in microseconds
+    uint16_t   duty = 10000;
+//    uint16_t   dutyInc = 100;
 
     PWM_Params_init(&params);
     params.dutyUnits = PWM_DUTY_US;
@@ -78,15 +78,17 @@ Void pwmLEDFxn(UArg arg0, UArg arg1)
     }
     PWM_start(pwm1);
     /* Loop forever incrementing the PWM duty */
+    PWM_setDuty(pwm1, duty);
+
     while (1) {
-        PWM_setDuty(pwm1, duty);
+//        PWM_setDuty(pwm1, duty);
 
-        duty = (duty + dutyInc);
-        if (duty == pwmPeriod || (!duty)) {
-            dutyInc = - dutyInc;
-        }
+//        duty = (duty + dutyInc);
+//        if (duty == pwmPeriod || (!duty)) {
+//            dutyInc = - dutyInc;
+//        }
 
-        Task_sleep((UInt) arg0);
+//        Task_sleep((UInt) arg0);
     }
 }
 
