@@ -61,11 +61,11 @@ static PIN_State ledPinState;
 /*
  * Initial LED pin configuration table
  *   - LEDs Board_LED0 is on.
- *   - LEDs Board_LED1 is off.
+ *   - LEDs Board_LED1 is on.
  */
 PIN_Config ledPinTable[] = {
     Board_LED0 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
-    Board_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW  | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+    Board_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH  | PIN_PUSHPULL | PIN_DRVSTR_MAX,
     PIN_TERMINATE
 };
 
@@ -74,8 +74,8 @@ PIN_Config ledPinTable[] = {
  *   - Buttons interrupts are configured to trigger on falling edge.
  */
 PIN_Config buttonPinTable[] = {
-    Board_BUTTON0  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
-    Board_BUTTON1  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
+    Board_LEDSW_L  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
+    Board_LEDSW_R  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
     PIN_TERMINATE
 };
 
@@ -93,12 +93,12 @@ void buttonCallbackFxn(PIN_Handle handle, PIN_Id pinId) {
     if (!PIN_getInputValue(pinId)) {
         /* Toggle LED based on the button pressed */
         switch (pinId) {
-            case Board_BUTTON0:
+            case Board_LEDSW_L:
                 currVal =  PIN_getOutputValue(Board_LED0);
                 PIN_setOutputValue(ledPinHandle, Board_LED0, !currVal);
                 break;
 
-            case Board_BUTTON1:
+            case Board_LEDSW_R:
                 currVal =  PIN_getOutputValue(Board_LED1);
                 PIN_setOutputValue(ledPinHandle, Board_LED1, !currVal);
                 break;

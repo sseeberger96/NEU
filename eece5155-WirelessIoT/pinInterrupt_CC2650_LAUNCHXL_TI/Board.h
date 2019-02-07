@@ -49,6 +49,9 @@ extern "C" {
 #define     Board_BUTTON0           Board_BTN1
 #define     Board_BUTTON1           Board_BTN2
 
+#define     Board_LEDSW_R           Board_DIO12
+#define     Board_LEDSW_L           Board_DIO0
+
 #define     Board_UART0             Board_UART
 #define     Board_AES0              Board_AES
 #define     Board_WATCHDOG0         CC2650_LAUNCHXL_WATCHDOG0
