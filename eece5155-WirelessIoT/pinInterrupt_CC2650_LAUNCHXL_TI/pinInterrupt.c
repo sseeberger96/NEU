@@ -51,11 +51,9 @@
 #include "Board.h"
 
 /* Pin driver handles */
-static PIN_Handle buttonPinHandle;
 static PIN_Handle ledPinHandle;
 
 /* Global memory storage for a PIN_Config table */
-static PIN_State buttonPinState;
 static PIN_State ledPinState;
 
 /*
@@ -69,45 +67,20 @@ PIN_Config ledPinTable[] = {
     PIN_TERMINATE
 };
 
-/*
- * Application button pin configuration table:
- *   - Buttons interrupts are configured to trigger on falling edge.
- */
-PIN_Config buttonPinTable[] = {
-    Board_LEDSW_L  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
-    Board_LEDSW_R  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
-    PIN_TERMINATE
-};
-
-/*
- *  ======== buttonCallbackFxn ========
- *  Pin interrupt Callback function board buttons configured in the pinTable.
- *  If Board_LED3 and Board_LED4 are defined, then we'll add them to the PIN
- *  callback function.
- */
-void buttonCallbackFxn(PIN_Handle handle, PIN_Id pinId) {
+void LED_SW_0(){
     uint32_t currVal = 0;
 
-    /* Debounce logic, only toggle if the button is still pushed (low) */
-    CPUdelay(8000*50);
-    if (!PIN_getInputValue(pinId)) {
-        /* Toggle LED based on the button pressed */
-        switch (pinId) {
-            case Board_LEDSW_L:
-                currVal =  PIN_getOutputValue(Board_LED0);
-                PIN_setOutputValue(ledPinHandle, Board_LED0, !currVal);
-                break;
+    currVal =  PIN_getOutputValue(Board_LED0);
+    PIN_setOutputValue(ledPinHandle, Board_LED0, !currVal);
 
-            case Board_LEDSW_R:
-                currVal =  PIN_getOutputValue(Board_LED1);
-                PIN_setOutputValue(ledPinHandle, Board_LED1, !currVal);
-                break;
+}
 
-            default:
-                /* Do nothing */
-                break;
-        }
-    }
+void LED_SW_1(){
+    uint32_t currVal = 0;
+
+    currVal =  PIN_getOutputValue(Board_LED1);
+    PIN_setOutputValue(ledPinHandle, Board_LED1, !currVal);
+
 }
 
 /*
@@ -122,16 +95,6 @@ int main(void)
     ledPinHandle = PIN_open(&ledPinState, ledPinTable);
     if(!ledPinHandle) {
         System_abort("Error initializing board LED pins\n");
-    }
-
-    buttonPinHandle = PIN_open(&buttonPinState, buttonPinTable);
-    if(!buttonPinHandle) {
-        System_abort("Error initializing button pins\n");
-    }
-
-    /* Setup callback for button pins */
-    if (PIN_registerIntCb(buttonPinHandle, &buttonCallbackFxn) != 0) {
-        System_abort("Error registering button callback function");
     }
 
     /* Start kernel. */
