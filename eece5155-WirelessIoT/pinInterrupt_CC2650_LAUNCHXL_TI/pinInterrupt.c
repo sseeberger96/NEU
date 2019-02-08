@@ -51,11 +51,11 @@
 #include "Board.h"
 
 /* Pin driver handles */
-static PIN_Handle buttonPinHandle;
+static PIN_Handle switchPinHandle;
 static PIN_Handle ledPinHandle;
 
 /* Global memory storage for a PIN_Config table */
-static PIN_State buttonPinState;
+static PIN_State switchPinState;
 static PIN_State ledPinState;
 
 /*
@@ -70,35 +70,36 @@ PIN_Config ledPinTable[] = {
 };
 
 /*
- * Application button pin configuration table:
- *   - Buttons interrupts are configured to trigger on falling edge.
+ * Application DIO switch pin configuration table:
+ *   - DIO pin interrupts are configured to trigger on falling edge
+ *     (i.e. when the pin is connected to ground).
  */
-PIN_Config buttonPinTable[] = {
-    Board_LEDSW_L  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
+PIN_Config switchPinTable[] = {
     Board_LEDSW_R  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
+    Board_LEDSW_G  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
     PIN_TERMINATE
 };
 
 /*
- *  ======== buttonCallbackFxn ========
- *  Pin interrupt Callback function board buttons configured in the pinTable.
+ *  ======== switchCallbackFxn ========
+ *  Pin interrupt Callback function for board DIO pins configured in the pinTable.
  *  If Board_LED3 and Board_LED4 are defined, then we'll add them to the PIN
  *  callback function.
  */
-void buttonCallbackFxn(PIN_Handle handle, PIN_Id pinId) {
+void switchCallbackFxn(PIN_Handle handle, PIN_Id pinId) {
     uint32_t currVal = 0;
 
-    /* Debounce logic, only toggle if the button is still pushed (low) */
+    /* Debounce logic, only toggle if the DIO pin is still connected to ground (low) */
     CPUdelay(8000*50);
     if (!PIN_getInputValue(pinId)) {
-        /* Toggle LED based on the button pressed */
+        /* Toggle LED based on the DIO pin connected to ground */
         switch (pinId) {
-            case Board_LEDSW_L:
+            case Board_LEDSW_R:
                 currVal =  PIN_getOutputValue(Board_LED0);
                 PIN_setOutputValue(ledPinHandle, Board_LED0, !currVal);
                 break;
 
-            case Board_LEDSW_R:
+            case Board_LEDSW_G:
                 currVal =  PIN_getOutputValue(Board_LED1);
                 PIN_setOutputValue(ledPinHandle, Board_LED1, !currVal);
                 break;
@@ -124,14 +125,14 @@ int main(void)
         System_abort("Error initializing board LED pins\n");
     }
 
-    buttonPinHandle = PIN_open(&buttonPinState, buttonPinTable);
-    if(!buttonPinHandle) {
-        System_abort("Error initializing button pins\n");
+    switchPinHandle = PIN_open(&switchPinState, switchPinTable);
+    if(!switchPinHandle) {
+        System_abort("Error initializing DIO switch pins\n");
     }
 
-    /* Setup callback for button pins */
-    if (PIN_registerIntCb(buttonPinHandle, &buttonCallbackFxn) != 0) {
-        System_abort("Error registering button callback function");
+    /* Setup callback for DIO switch pins */
+    if (PIN_registerIntCb(switchPinHandle, &switchCallbackFxn) != 0) {
+        System_abort("Error registering DIO switch pin callback function");
     }
 
     /* Start kernel. */
