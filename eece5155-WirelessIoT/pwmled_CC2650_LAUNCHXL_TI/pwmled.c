@@ -62,7 +62,7 @@ Void pwmLEDFxn(UArg arg0, UArg arg1)
 {
     PWM_Handle pwm1;
     PWM_Params params;
-    uint16_t   pwmPeriod = 50000;      // Period and duty in microseconds
+    uint16_t   pwmPeriod = 50000;      // Period and duty in microseconds. Period: 50ms; Duty Cycle: 10ms
     uint16_t   duty = 10000;
 //    uint16_t   dutyInc = 100;
 
@@ -76,19 +76,14 @@ Void pwmLEDFxn(UArg arg0, UArg arg1)
     if (pwm1 == NULL) {
         System_abort("Board_PWM0 did not open");
     }
+
     PWM_start(pwm1);
-    /* Loop forever incrementing the PWM duty */
     PWM_setDuty(pwm1, duty);
 
     while (1) {
-//        PWM_setDuty(pwm1, duty);
-
-//        duty = (duty + dutyInc);
-//        if (duty == pwmPeriod || (!duty)) {
-//            dutyInc = - dutyInc;
-//        }
-
-//        Task_sleep((UInt) arg0);
+        // Can leave this infinite while loop empty as no other processing needs to occur
+        // I left this loop in as a clean way to keep the program running, however in truth
+        // it would continue to run anyway through the BIOS
     }
 }
 
